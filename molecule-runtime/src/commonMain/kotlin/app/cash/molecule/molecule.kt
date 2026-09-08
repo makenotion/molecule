@@ -231,33 +231,38 @@ public fun <T> CoroutineScope.launchMolecule(
   val composition = Composition(UnitApplier, recomposer)
 
   var snapshotHandle: ObserverHandle? = null
-  launch(finalContext, start = UNDISPATCHED) {
-    try {
-      recomposer.runRecomposeAndApplyChanges()
-    } finally {
-      composition.dispose()
-      snapshotHandle?.dispose()
-    }
+  val recomposerJob = launch(finalContext, start = UNDISPATCHED) {
+    recomposer.runRecomposeAndApplyChanges()
   }
 
-  when (snapshotNotifier) {
-    SnapshotNotifier.External -> {}
-    SnapshotNotifier.WhileActive -> {
-      var applyScheduled = false
-      snapshotHandle = Snapshot.registerGlobalWriteObserver {
-        if (!applyScheduled) {
-          applyScheduled = true
-          launch(finalContext) {
-            applyScheduled = false
-            Snapshot.sendApplyNotifications()
+  try {
+    when (snapshotNotifier) {
+      SnapshotNotifier.External -> {}
+      SnapshotNotifier.WhileActive -> {
+        var applyScheduled = false
+        snapshotHandle = Snapshot.registerGlobalWriteObserver {
+          if (!applyScheduled) {
+            applyScheduled = true
+            launch(finalContext) {
+              applyScheduled = false
+              Snapshot.sendApplyNotifications()
+            }
           }
         }
       }
     }
-  }
 
-  composition.setContent {
-    emitter(body())
+    composition.setContent {
+      emitter(body())
+    }
+  } catch (throwable: Throwable) {
+    recomposer.cancel()
+    throw throwable
+  } finally {
+    recomposerJob.invokeOnCompletion {
+      composition.dispose()
+      snapshotHandle?.dispose()
+    }
   }
 }
 

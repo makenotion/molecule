@@ -3,7 +3,10 @@
 ## [Unreleased]
 [Unreleased]: https://github.com/cashapp/molecule/compare/2.2.0...HEAD
 
-Nothing yet!
+## 2.2.0-notion.1
+
+- Backport [cashapp/molecule#761](https://github.com/cashapp/molecule/pull/761) onto 2.2.0 to fix startup cancellation disposing the composition before its initial value is produced.
+- Publish the patched runtime under `so.notion` for Notion's Android app.
 
 
 ## [2.2.0] - 2025-09-24
