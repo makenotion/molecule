@@ -89,13 +89,6 @@ subprojects {
           name = "installLocally"
           url = "${rootProject.buildDir}/localMaven"
         }
-        maven {
-          name = "notion"
-          url = "s3://notion-android-maven-artifacts/releases"
-          authentication {
-            awsIm(AwsImAuthentication)
-          }
-        }
       }
     }
   }
