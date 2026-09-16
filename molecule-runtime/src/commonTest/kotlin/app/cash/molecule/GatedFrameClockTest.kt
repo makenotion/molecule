@@ -17,13 +17,40 @@ package app.cash.molecule
 
 import assertk.all
 import assertk.assertThat
+import assertk.assertions.isEqualTo
 import assertk.assertions.isLessThan
 import assertk.assertions.isPositive
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 class GatedFrameClockTest {
+  @Test
+  fun resumingWithQueuedFrameRespectsPause() = runTest {
+    val frameClock = GatedFrameClock(backgroundScope, EmptyCoroutineContext)
+    val frames = Channel<Int>(1)
+    launch(UnconfinedTestDispatcher(testScheduler)) {
+      repeat(2) { frame ->
+        frameClock.withFrameNanos {
+          frameClock.isRunning = false
+          frames.trySend(frame).getOrThrow()
+        }
+      }
+    }
+
+    frameClock.isRunning = false
+    frameClock.isRunning = true
+    runCurrent()
+    assertThat(frames.receive()).isEqualTo(0)
+
+    frameClock.isRunning = true
+    assertThat(frames.receive()).isEqualTo(1)
+  }
+
   @Test
   fun ticksWithTime() = runTest {
     val frameClock = GatedFrameClock(backgroundScope, EmptyCoroutineContext)
