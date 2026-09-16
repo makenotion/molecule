@@ -46,7 +46,7 @@ internal class GatedFrameClock(
       val started = value && !field
       field = value
       if (started) {
-        sendFrame()
+        frameSends.trySend(Unit).getOrThrow()
       }
     }
 
